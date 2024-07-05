@@ -3,8 +3,8 @@
 # -------------------
 import streamlit as st
 import numpy as np
-import pickle
 import os
+import zipfile
 from PIL import Image, ImageOps
 from streamlit_image_select import image_select
 from tensorflow.keras.models import model_from_json
@@ -21,11 +21,20 @@ def main():
     # function to load and cache pretrained model
     @st.cache_resource()
     def load_model():
-        path = "../dffnetv2B0"
+        zip_path = "./dffnetv2B0.zip"
+        extract_path = "./dffnetv2B0"
+        
+        # Unzip the model files
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_path)
+        
+        json_path = os.path.join(extract_path, 'dffnetv2B0.json')
+        weights_path = os.path.join(extract_path, 'dffnetv2B0.h5')
+        
         # Model reconstruction from JSON file
-        with open(path + '.json', 'r') as f:
+        with open(json_path, 'r') as f:
             model = model_from_json(f.read())
-        model.load_weights(path + '.h5')
+        model.load_weights(weights_path)
         return model
 
     # function to preprocess an image and get a prediction from the model
@@ -62,13 +71,11 @@ def main():
 
         # from streamlit_image_select docs - https://github.com/jrieke/streamlit-image-select
         selected_image = image_select(
-            "Click on an image below to guess if it is real of fake:", 
+            "Click on an image below to guess if it is real or fake:", 
             images,
             return_value="index")
         prediction = get_prediction(classifier, images[selected_image])
         true_label = 'Fake' if 'fake' in images[selected_image].lower() else 'Real'
-
-        #st.text(true_label)
 
         st.subheader("Is this image real or fake?")
         st.image(images[selected_image])
